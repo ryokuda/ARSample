@@ -45,6 +45,7 @@
 		8971052026F8304A00376DB3 = {
 			isa = PBXGroup;
 			children = (
+				89F05FB526FC5AA20005F01A /* README.md */,
 				8971052B26F8304A00376DB3 /* ARSample */,
 				8971052A26F8304A00376DB3 /* Products */,
 			);
@@ -71,7 +72,6 @@
 				8971053A26F8304E00376DB3 /* LaunchScreen.storyboard */,
 				8971053D26F8304E00376DB3 /* Info.plist */,
 				8971053E26F8304E00376DB3 /* ARSample-Bridging-Header.h */,
-				89F05FB526FC5AA20005F01A /* README.md */,
 			);
 			path = ARSample;
 			sourceTree = "<group>";
