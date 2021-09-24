@@ -1,7 +1,7 @@
-# ビルドとアプリ実行の環境
+# 動作を確認した実行環境
 * macOS Big Sur Version 11.3.1
 * Xcode 12.0
-* iPhone/iPad with LiDAR (iPad 11 Pro / iPhone 12 Pro / iPhone 12 Pro Max, etc.)
+* iPhone12 Pro
 
 # 使い方
 **ARSample**アプリを立ち上げて、背面カメラを撮影したい方向に向けて、
@@ -23,6 +23,22 @@ LiDARからのコンフィデンス情報のxmlファイルを、
 6. 保存したファイルをFinderで右クリックし**Show Package Contents**を選びます
 7. Finderの新たなウインドウが現れるので、**AppData** => **Documents**を開くと保存されたファイルを見ることができます
 
+深度情報のxmlファイルの内容は、次のように浮動小数点数の一次元配列になっています。
+```xml:yyyymmdd-hhmmss.dpt
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+    <real>3.669921875</real>
+    <real>4.07421875</real>
+    <real>4.015625</real>
+    <real>4.03515625</real>
+    <real>4.20703125</real>
+    .... 合計49,152 (=256*192) 行続く ....
+```
+これらの数値は、幅256、高さ192の二次元配列を一次元に並べたものであり、原点（左上）の要素を
+先頭にして幅方向（x軸方向）の256サンプルの塊が192回繰り返して現れるフォーマットになっています。
+
 # ソースコードに関するメモ
 ## 大元のソースコード
 **ASSample**のソースコードは次のようにして得ることができるArgumented Reality Appのサンプルコードを元にしています。  
@@ -38,28 +54,28 @@ LiDARからのコンフィデンス情報のxmlファイルを、
 **ARSample**アプリはLiDARからの深度情報を取得するためにだけARKitを使用しており、アプリ内部で実行されているトラッキングの機能は全く使っていません。  
 ソースコードの変更はファイル**ViewController.swift**のみに限られています。
 スクリーンがタップされた時に仮想物体を挿入する関数、
-````
+```swift:ViewController.swift
 @objc
 func handleTap(gestureRecognize: UITapGestureRecognizer) {
-````
+```
 をコメントアウトし、代わりに、画像や深度情報をファイルとして保存する関数
-````
+```swift:ViewController.swift
 @objc
 func checkTap(gestureRecognize: UITapGestureRecognizer) {
-````
+```
 を挿入しています。  
-スクリーンがタップされた時に````checkTap````が呼び出されるように、Gesture Recognizer生成部分を
-````
+スクリーンがタップされた時に`checkTap`が呼び出されるように、Gesture Recognizer生成部分を
+```swift:ViewController.swift
 /*
 let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.handleTap(gestureRecognize:)))
 view.addGestureRecognizer(tapGesture)
 */
 let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.checkTap(gestureRecognize:)))
 view.addGestureRecognizer(tapGesture)
-````
+```
 のように変更しています。  
-関数````checkTap````の内部の処理は、最初に現在の日付と時間を取得して保存するファイルの名前を生成します。
-````
+関数`checkTap`の内部の処理は、最初に現在の日付と時間を取得して保存するファイルの名前を生成します。
+```swift:ViewController.swift
 // get time stamp and create file names
 let dt = Date()
 let dateFormatter = DateFormatter()
@@ -71,9 +87,9 @@ let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDo
 let jpegFileName = documentPath.appendingPathComponent( timeStamp+".jpg" )
 let depthFileName = documentPath.appendingPathComponent( timeStamp+".dpt" )
 let confidenceFileName = documentPath.appendingPathComponent( timeStamp+".cnf" )
-````
+```
 次に、カメラ画像をJPEGファイルに保存します。
-````
+```swift:ViewController.swift
 // save camera image to JPEG file
 let image = currentFrame.capturedImage
 // print( "Camera Image width:"+String(CVPixelBufferGetWidth(image))+" height:"+String(CVPixelBufferGetHeight(image))) // 1920 x 1440
@@ -88,13 +104,13 @@ do {
     print( "cannot write jpeg data" )
     return
 }
-````
-カメラ画像は、````ARSessio.currentFrame````オブジェクトの
-````capturedImage````オブジェクトに入っています。
-このオブジェクトの型は````CVPixelBuffer````でありJPEGファイルに変換するために
-一旦````UIImage````型に変換しています。
-この変換に使うコード（````UIImage````のコンストラクタ）として、
-````
+```
+カメラ画像は、`ARSessio.currentFrame`オブジェクトの
+`capturedImage`オブジェクトに入っています。
+このオブジェクトの型は`CVPixelBuffer`でありJPEGファイルに変換するために
+一旦`UIImage`型に変換しています。
+この変換に使うコード（`UIImage`のコンストラクタ）として、
+```swift:ViewController.swift
 extension UIImage {     // for tranforming CVPixelBuffer to UIImage
     public convenience init?(pixelBuffer: CVPixelBuffer) {
         var cgImage: CGImage?
@@ -106,10 +122,10 @@ extension UIImage {     // for tranforming CVPixelBuffer to UIImage
         self.init(cgImage: cgImage)
     }
 }
-````
-のように````UIImage````クラスを拡張しています。  
+```
+のように`UIImage`クラスを拡張しています。  
 次に、LiDARからの深度情報を取得してファイルに保存する部分です。
-````
+```swift:ViewController.swift
 // save depth data to a file
 guard let depthMap = currentFrame.sceneDepth?.depthMap else { return }
 CVPixelBufferLockBaseAddress(depthMap,.readOnly) // enable CPU can read the CVPixelBuffer
@@ -130,9 +146,9 @@ do {
     print( "cannot write depth data" )
 }
 CVPixelBufferUnlockBaseAddress(depthMap,.readOnly) // Free buffer
-````
-深度情報は32bitの単精度浮動小数点数であり、````ARSessio.currentFrame````オブジェクトの
-````sceneDepth.depthMap````オブジェクトに入っています。
+```
+深度情報は32bitの単精度浮動小数点数であり、`ARSessio.currentFrame`オブジェクトの
+`sceneDepth.depthMap`オブジェクトに入っています。
 ここから深度情報を取得するやり方は、[iOSデバイス上のアプリケーションコンテナの内容を確認する方法](https://qiita.com/1024chon/items/74da8d63a8959a8192f5)を参考にしています。  
 同様にコンフィデンス情報も取得します。
 
