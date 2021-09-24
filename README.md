@@ -13,6 +13,7 @@ LiDARからのコンフィデンス情報のxmlファイルを、
 * **カメラ画像のJPEGファイル**: *yyyymmdd-hhmmss*.jpg
 * **深度情報のxmlファイル**: *yyyymmdd-hhmmss*.dpt
 * **コンフィデンス情報のxmlファイル**: *yyyymmdd-hhmmss*.cnf
+
 保存したファイルを読み出すにはXCodeを使ってデバイスのコンテナ情報を読み出す必要があります。  
 操作方法：
 1. XCodeを立ち上げてiPhoneデバイスを接続する
