@@ -53,7 +53,7 @@ LiDARからのコンフィデンス情報のxmlファイルを、
 スクリーンをタップした時にカメラ位置に立方体の仮想物体（ARAnchor）を挿入し、
 以後、ARKit（拡張現実機能）を使用して挿入された物体が３次元空間の挿入された位置に表示し続けるというものです。
 **ARSample**アプリはLiDARからの深度情報を取得するためにだけARKitを使用しており、アプリ内部で実行されているトラッキングの機能は全く使っていません。  
-ソースコードの変更はファイル**ViewController.swift**のみに限られています。
+ソースコードの変更はファイル**ViewController.swift**のみに限られています。  
 スクリーンがタップされた時に仮想物体を挿入する関数、
 ```swift:ViewController.swift
 @objc
@@ -106,7 +106,7 @@ do {
     return
 }
 ```
-カメラ画像は、`ARSessio.currentFrame`オブジェクトの
+カメラ画像は、`ARSession.currentFrame`オブジェクトの
 `capturedImage`オブジェクトに入っています。
 このオブジェクトの型は`CVPixelBuffer`でありJPEGファイルに変換するために
 一旦`UIImage`型に変換しています。
@@ -126,6 +126,22 @@ extension UIImage {     // for tranforming CVPixelBuffer to UIImage
 ```
 のように`UIImage`クラスを拡張しています。  
 次に、LiDARからの深度情報を取得してファイルに保存する部分です。
+大元のソースコードではLiDARが出力する情報を取得できません。
+LiDARからのデータを取得できるようにするには、`ARSession`のコンフィグレーションに置いて
+次のコード
+```swift:ViewContrtoller.swift
+// Create a session configuration
+let configuration = ARWorldTrackingConfiguration()
+configuration.frameSemantics = [
+                    .sceneDepth,            // raw output from LiDAR
+                    .smoothedSceneDepth     // filtered output from LiDAR
+                ]
+```
+を使って、`.sceneDepth`を指定する必要があります。
+`.smoothedSceneDepth`は、深度情報が画像フレーム間でスムーズになるようにフィルタを掛けた深度情報を
+取得できるようにする指定ですが、このプログラムではデータの取得はしていません。  
+深度情報を取得してファイルに保存する部分のコードは次の通りです。
+
 ```swift:ViewController.swift
 // save depth data to a file
 guard let depthMap = currentFrame.sceneDepth?.depthMap else { return }
