@@ -15,16 +15,18 @@ LiDARからのコンフィデンス情報のxmlファイルを、
 * **コンフィデンス情報のxmlファイル**: *yyyymmdd-hhmmss*.cnf
 
 保存したファイルを読み出すにはXCodeを使ってデバイスのコンテナ情報を読み出す必要があります。  
+
 操作方法：
 1. XCodeを立ち上げてiPhoneデバイスを接続する
 2. XCodeの**Window**メニューから**Device and Simulators**を選択します
 3. **Devices**から目的のiPhoneデバイスを選択します
 4. **INSTALLED APPS**の中から**ARSample**を選択します
-5. その下の設定アイコン（歯車アイコン）をクリックし**Download Container...**を実行し、コンテナ情報をmacのファイルとして保存します
+5. その下の設定アイコン（歯車アイコン）をクリックし **Download Container...** を実行し、コンテナ情報をmacのファイルとして保存します
 6. 保存したファイルをFinderで右クリックし**Show Package Contents**を選びます
 7. Finderの新たなウインドウが現れるので、**AppData** => **Documents**を開くと保存されたファイルを見ることができます
 
 深度情報のxmlファイルの内容は、次のように浮動小数点数の一次元配列になっています。
+
 ```xml:yyyymmdd-hhmmss.dpt
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -37,8 +39,30 @@ LiDARからのコンフィデンス情報のxmlファイルを、
     <real>4.20703125</real>
     .... 合計49,152 (=256*192) 行続く ....
 ```
-これらの数値は、幅256、高さ192の二次元配列を一次元に並べたものであり、原点（左上）の要素を
+
+これらの数値の単位はメートルで、幅256、高さ192の二次元配列を一次元に並べたものであり、原点（左上）の要素を
 先頭にして幅方向（x軸方向）の256サンプルの塊が192回繰り返して現れるフォーマットになっています。
+
+コンフィデンス情報のxmlファイルの内容は、次のように整数の一次元配列になっています。
+要素が並ぶ順番は深度情報のxmlファイルと同じです。
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+    <integer>0</integer>
+    <integer>0</integer>
+    <integer>0</integer>
+    <integer>0</integer>
+    <integer>0</integer>
+    <integer>0</integer>
+    <integer>0</integer>
+```
+
+現れる数値は深度情報の確度の高低を表わす0〜2の整数で、2:確度高、1:確度中、0:確度低の意味と推測されます。
+iPhone 12 ProのLiDARから出力される数値を見ていると、深度が5.5m未満ならコンフィデンスは2、
+5.5m以上で6m未満ならコンフィデンスは1、6m以上ならコンフィデンスは0になっているようです。
 
 # ソースコードに関するメモ
 ## 大元のソースコード
@@ -54,6 +78,7 @@ LiDARからのコンフィデンス情報のxmlファイルを、
 以後、ARKit（拡張現実機能）を使用して挿入された物体が３次元空間の挿入された位置に表示し続けるというものです。
 **ARSample**アプリはLiDARからの深度情報を取得するためにだけARKitを使用しており、アプリ内部で実行されているトラッキングの機能は全く使っていません。  
 ソースコードの変更はファイル**ViewController.swift**のみに限られています。  
+
 スクリーンがタップされた時に仮想物体を挿入する関数、
 ```swift:ViewController.swift
 @objc
@@ -65,6 +90,7 @@ func handleTap(gestureRecognize: UITapGestureRecognizer) {
 func checkTap(gestureRecognize: UITapGestureRecognizer) {
 ```
 を挿入しています。  
+
 スクリーンがタップされた時に`checkTap`が呼び出されるように、Gesture Recognizer生成部分を
 ```swift:ViewController.swift
 /*
@@ -75,6 +101,7 @@ let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewCont
 view.addGestureRecognizer(tapGesture)
 ```
 のように変更しています。  
+
 関数`checkTap`の内部の処理は、最初に現在の日付と時間を取得して保存するファイルの名前を生成します。
 ```swift:ViewController.swift
 // get time stamp and create file names
@@ -89,6 +116,7 @@ let jpegFileName = documentPath.appendingPathComponent( timeStamp+".jpg" )
 let depthFileName = documentPath.appendingPathComponent( timeStamp+".dpt" )
 let confidenceFileName = documentPath.appendingPathComponent( timeStamp+".cnf" )
 ```
+
 次に、カメラ画像をJPEGファイルに保存します。
 ```swift:ViewController.swift
 // save camera image to JPEG file
@@ -110,6 +138,7 @@ do {
 `capturedImage`オブジェクトに入っています。
 このオブジェクトの型は`CVPixelBuffer`でありJPEGファイルに変換するために
 一旦`UIImage`型に変換しています。
+
 この変換に使うコード（`UIImage`のコンストラクタ）として、
 ```swift:ViewController.swift
 extension UIImage {     // for tranforming CVPixelBuffer to UIImage
@@ -125,6 +154,7 @@ extension UIImage {     // for tranforming CVPixelBuffer to UIImage
 }
 ```
 のように`UIImage`クラスを拡張しています。  
+
 次に、LiDARからの深度情報を取得してファイルに保存する部分です。
 大元のソースコードではLiDARが出力する情報を取得できません。
 LiDARからのデータを取得できるようにするには、`ARSession`のコンフィグレーションに置いて
@@ -140,8 +170,8 @@ configuration.frameSemantics = [
 を使って、`.sceneDepth`を指定する必要があります。
 `.smoothedSceneDepth`は、深度情報が画像フレーム間でスムーズになるようにフィルタを掛けた深度情報を
 取得できるようにする指定ですが、このプログラムではデータの取得はしていません。  
-深度情報を取得してファイルに保存する部分のコードは次の通りです。
 
+深度情報を取得してファイルに保存する部分のコードは次の通りです。
 ```swift:ViewController.swift
 // save depth data to a file
 guard let depthMap = currentFrame.sceneDepth?.depthMap else { return }
@@ -164,9 +194,33 @@ do {
 }
 CVPixelBufferUnlockBaseAddress(depthMap,.readOnly) // Free buffer
 ```
+
 深度情報は32bitの単精度浮動小数点数であり、`ARSessio.currentFrame`オブジェクトの
 `sceneDepth.depthMap`オブジェクトに入っています。
 ここから深度情報を取得するやり方は、[iOSデバイス上のアプリケーションコンテナの内容を確認する方法](https://qiita.com/1024chon/items/74da8d63a8959a8192f5)を参考にしています。  
+
 同様にコンフィデンス情報も取得します。
+```swift:ViewController.swift
+// save confidence data to a file
+guard let confidenceMap = currentFrame.sceneDepth?.confidenceMap else { return }
+CVPixelBufferLockBaseAddress(confidenceMap,.readOnly) // enable CPU can read the CVPixelBuffer
+height = CVPixelBufferGetHeight( confidenceMap ) // 192 pixel
+//let bytesPerRow = CVPixelBufferGetBytesPerRow( confidenceMap ) // 1024 = 256 pixel X 1 bytes
+width = CVPixelBufferGetWidth( confidenceMap ) // 256 pixcel
+// let planes = CVPixelBufferGetPlaneCount( confidenceMap ) // 0
+// let dataSize = CVPixelBufferGetDataSize( confidenceMap ) // 49,152 = 256 pixel X 192 pixel X 1 bytes
+// let type = CVPixelBufferGetPixelFormatType( confidenceMap )
 
-
+base = CVPixelBufferGetBaseAddress( confidenceMap )
+let bindPtr2 = base?.bindMemory(to: UInt8.self, capacity: width * height )
+let bufPtr2 = UnsafeBufferPointer(start:bindPtr2, count: width * height)
+let confidenceArray = Array(bufPtr2)
+//print( confidenceArray )
+do {
+    try (confidenceArray as NSArray).write( to:confidenceFileName, atomically: false ) // written in xml text format
+} catch {
+    print( "cannot write depth data" )
+}
+CVPixelBufferUnlockBaseAddress(confidenceMap,.readOnly) // Free buffer
+```
+コンフィデンス情報は符号無し１バイト整数`UInt8`です。

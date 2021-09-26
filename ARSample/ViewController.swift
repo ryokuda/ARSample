@@ -159,15 +159,16 @@ class ViewController: UIViewController, MTKViewDelegate, ARSessionDelegate {
             guard let confidenceMap = currentFrame.sceneDepth?.confidenceMap else { return }
             CVPixelBufferLockBaseAddress(confidenceMap,.readOnly) // enable CPU can read the CVPixelBuffer
             height = CVPixelBufferGetHeight( confidenceMap ) // 192 pixel
-            //let bytesPerRow = CVPixelBufferGetBytesPerRow( confidenceMap ) // 1024 = 256 pixel X 4 bytes
+            //let bytesPerRow = CVPixelBufferGetBytesPerRow( confidenceMap ) // 1024 = 256 pixel X 1 bytes
             width = CVPixelBufferGetWidth( confidenceMap ) // 256 pixcel
-            //let planes = CVPixelBufferGetPlaneCount( confidenceMap ) // 0
-            //let dataSize = CVPixelBufferGetDataSize( confidenceMap ) // 196,608 = 256 pixel X 192 pixel X 4 bytes
+            // let planes = CVPixelBufferGetPlaneCount( confidenceMap ) // 0
+            // let dataSize = CVPixelBufferGetDataSize( confidenceMap ) // 49,152 = 256 pixel X 192 pixel X 1 bytes
+            // let type = CVPixelBufferGetPixelFormatType( confidenceMap )
 
             base = CVPixelBufferGetBaseAddress( confidenceMap )
-            bindPtr = base?.bindMemory(to: Float32.self, capacity: width * height )
-            bufPtr = UnsafeBufferPointer(start:bindPtr, count: width * height)
-            let confidenceArray = Array(bufPtr)
+            let bindPtr2 = base?.bindMemory(to: UInt8.self, capacity: width * height )
+            let bufPtr2 = UnsafeBufferPointer(start:bindPtr2, count: width * height)
+            let confidenceArray = Array(bufPtr2)
             //print( confidenceArray )
             do {
                 try (confidenceArray as NSArray).write( to:confidenceFileName, atomically: false ) // written in xml text format
